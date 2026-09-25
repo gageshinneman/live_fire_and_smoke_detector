@@ -1,0 +1,20 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Dataset (large, third-party — see data.yaml and Phase 1 licensing notes)
+data/
+
+# Training runs/checkpoints (large; the deployed model lives in model/best.pt)
+runs/
+
+# Pretrained weights downloaded on demand by ultralytics
+/yolov8n.pt
+/FastSAM-s.pt
+
+# Exploration outputs (regenerable via scripts/)
+scripts/exploration_output/
+
+# OS
+.DS_Store

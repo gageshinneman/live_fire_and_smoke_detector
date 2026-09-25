@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Wildfire Smoke/Fire Detection</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0d1117;
+    --panel: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --smoke: #e6c619;
+    --fire: #f85149;
+    --ok: #3fb950;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    padding: 24px;
+  }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); margin: 0 0 20px; font-size: 0.9rem; }
+
+  .layout {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .video-panel {
+    position: relative;
+    background: #000;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    width: min(100%, 720px);
+    aspect-ratio: 16 / 9;
+  }
+  video, canvas.overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+  }
+  canvas.overlay { pointer-events: none; }
+
+  .status-badge {
+    position: absolute;
+    top: 10px; left: 10px;
+    background: rgba(0,0,0,0.6);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    z-index: 2;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .dot.connected { background: var(--ok); }
+  .dot.error { background: var(--fire); }
+
+  .fps-badge {
+    position: absolute;
+    top: 10px; right: 10px;
+    background: rgba(0,0,0,0.6);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    z-index: 2;
+  }
+
+  .side-panel {
+    flex: 1;
+    min-width: 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .card h2 { font-size: 0.85rem; margin: 0 0 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  button, label.file-btn {
+    background: #21262d;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  button:hover, label.file-btn:hover { background: #30363d; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.primary { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: 600; }
+  button.stop { background: var(--fire); color: #0d1117; border-color: var(--fire); font-weight: 600; }
+  input[type="file"] { display: none; }
+
+  .slider-row { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; }
+  input[type="range"] { flex: 1; }
+
+  .legend { display: flex; gap: 16px; font-size: 0.8rem; margin-top: 8px; }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .swatch { width: 10px; height: 10px; border-radius: 2px; }
+
+  .log {
+    max-height: 260px;
+    overflow-y: auto;
+    font-size: 0.8rem;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 4px;
+  }
+  .log-entry { display: flex; justify-content: space-between; padding: 4px 6px; border-radius: 4px; background: #0d1117; }
+  .log-entry.smoke { border-left: 3px solid var(--smoke); }
+  .log-entry.fire { border-left: 3px solid var(--fire); }
+  .log-empty { color: var(--muted); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+
+<h1>Live Wildfire Smoke/Fire Detection</h1>
+<p class="subtitle">YOLOv8 fine-tuned on D-Fire, served over a WebSocket for real-time inference.</p>
+
+<div class="layout">
+  <div class="video-panel">
+    <video id="video" autoplay muted playsinline></video>
+    <canvas id="overlay" class="overlay"></canvas>
+    <div class="status-badge">
+      <div id="statusDot" class="dot"></div>
+      <span id="statusText">Idle</span>
+    </div>
+    <div class="fps-badge" id="fpsBadge">-- FPS</div>
+  </div>
+
+  <div class="side-panel">
+    <div class="card">
+      <h2>Source</h2>
+      <div class="btn-row">
+        <button id="startWebcamBtn" class="primary">Start Webcam</button>
+        <label class="file-btn" for="videoFile">Load Demo Video</label>
+        <input type="file" id="videoFile" accept="video/*">
+        <button id="stopBtn" class="stop" disabled>Stop</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Confidence Threshold</h2>
+      <div class="slider-row">
+        <input type="range" id="confSlider" min="0.05" max="0.95" step="0.05" value="0.25">
+        <span id="confValue">0.25</span>
+      </div>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--smoke)"></span>smoke</span>
+        <span><span class="swatch" style="background:var(--fire)"></span>fire</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Detection Log</h2>
+      <div class="log" id="log">
+        <div class="log-empty">No detections yet.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const video = document.getElementById("video");
+const overlay = document.getElementById("overlay");
+const ctx = overlay.getContext("2d");
+const statusDot = document.getElementById("statusDot");
+const statusText = document.getElementById("statusText");
+const fpsBadge = document.getElementById("fpsBadge");
+const startWebcamBtn = document.getElementById("startWebcamBtn");
+const stopBtn = document.getElementById("stopBtn");
+const videoFileInput = document.getElementById("videoFile");
+const confSlider = document.getElementById("confSlider");
+const confValue = document.getElementById("confValue");
+const logEl = document.getElementById("log");
+
+const CLASS_COLORS = { smoke: "#e6c619", fire: "#f85149" };
+const SEND_WIDTH = 640;        // downscale frames before sending, for speed
+const MAX_SEND_HZ = 12;        // cap how often we send frames
+
+let ws = null;
+let mediaStream = null;
+let running = false;
+let awaitingResponse = false;
+let lastSendTime = 0;
+let confThreshold = parseFloat(confSlider.value);
+let lastDetections = [];
+let fpsSmoothed = 0;
+let lastFrameTime = performance.now();
+
+const sendCanvas = document.createElement("canvas");
+const sendCtx = sendCanvas.getContext("2d");
+
+confSlider.addEventListener("input", () => {
+  confThreshold = parseFloat(confSlider.value);
+  confValue.textContent = confThreshold.toFixed(2);
+  redrawOverlay();
+});
+
+function setStatus(text, cls) {
+  statusText.textContent = text;
+  statusDot.className = "dot" + (cls ? " " + cls : "");
+}
+
+function wsUrl() {
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  return `${proto}://${location.host}/ws/detect`;
+}
+
+function connectWs() {
+  ws = new WebSocket(wsUrl());
+  ws.binaryType = "arraybuffer";
+
+  ws.onopen = () => setStatus("Connected", "connected");
+  ws.onerror = () => setStatus("Connection error", "error");
+  ws.onclose = () => {
+    if (running) setStatus("Disconnected", "error");
+  };
+  ws.onmessage = (event) => {
+    awaitingResponse = false;
+    let msg;
+    try {
+      msg = JSON.parse(event.data);
+    } catch {
+      return;
+    }
+    if (msg.error) {
+      console.warn("backend error:", msg.error, msg.message);
+      return;
+    }
+    lastDetections = msg.detections || [];
+    redrawOverlay();
+    logDetections(lastDetections);
+
+    const now = performance.now();
+    const instFps = 1000 / (now - lastFrameTime);
+    lastFrameTime = now;
+    fpsSmoothed = fpsSmoothed === 0 ? instFps : (0.1 * instFps + 0.9 * fpsSmoothed);
+    fpsBadge.textContent = `${fpsSmoothed.toFixed(1)} FPS`;
+  };
+}
+
+function resizeOverlay() {
+  overlay.width = overlay.clientWidth;
+  overlay.height = overlay.clientHeight;
+}
+window.addEventListener("resize", resizeOverlay);
+
+function redrawOverlay() {
+  resizeOverlay();
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+  // Map detection coords (in SEND_WIDTH-scaled space) to the displayed overlay size.
+  const scaleX = overlay.width / SEND_WIDTH;
+  const scaleY = overlay.height / (SEND_WIDTH * (sendCanvas.height / sendCanvas.width || 1));
+
+  for (const det of lastDetections) {
+    if (det.confidence < confThreshold) continue;
+    const color = CLASS_COLORS[det.class_name] || "#fff";
+    const x0 = det.box.x0 * scaleX;
+    const y0 = det.box.y0 * scaleY;
+    const w = (det.box.x1 - det.box.x0) * scaleX;
+    const h = (det.box.y1 - det.box.y0) * scaleY;
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x0, y0, w, h);
+
+    const label = `${det.class_name} ${det.confidence.toFixed(2)}`;
+    ctx.font = "13px -apple-system, sans-serif";
+    const textWidth = ctx.measureText(label).width;
+    ctx.fillStyle = color;
+    ctx.fillRect(x0, Math.max(0, y0 - 18), textWidth + 8, 18);
+    ctx.fillStyle = "#000";
+    ctx.fillText(label, x0 + 4, Math.max(12, y0 - 5));
+  }
+}
+
+function logDetections(detections) {
+  const above = detections.filter(d => d.confidence >= confThreshold);
+  if (above.length === 0) return;
+  logEl.querySelector(".log-empty")?.remove();
+  const time = new Date().toLocaleTimeString();
+  for (const det of above) {
+    const entry = document.createElement("div");
+    entry.className = `log-entry ${det.class_name}`;
+    entry.innerHTML = `<span>${det.class_name} (${det.confidence.toFixed(2)})</span><span>${time}</span>`;
+    logEl.appendChild(entry);
+  }
+  while (logEl.children.length > 100) logEl.removeChild(logEl.firstChild);
+}
+
+function captureLoop() {
+  if (!running) return;
+  requestAnimationFrame(captureLoop);
+
+  if (video.readyState < 2 || video.videoWidth === 0) return;
+  const now = performance.now();
+  if (awaitingResponse) return;
+  if (now - lastSendTime < 1000 / MAX_SEND_HZ) return;
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+  lastSendTime = now;
+  const sendHeight = Math.round(SEND_WIDTH * (video.videoHeight / video.videoWidth));
+  sendCanvas.width = SEND_WIDTH;
+  sendCanvas.height = sendHeight;
+  sendCtx.drawImage(video, 0, 0, SEND_WIDTH, sendHeight);
+
+  sendCanvas.toBlob((blob) => {
+    if (!blob || !ws || ws.readyState !== WebSocket.OPEN) return;
+    awaitingResponse = true;
+    blob.arrayBuffer().then((buf) => ws.send(buf));
+  }, "image/jpeg", 0.8);
+}
+
+async function startWebcam() {
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = mediaStream;
+    video.src = "";
+    beginSession();
+  } catch (err) {
+    setStatus("Camera access denied", "error");
+    console.error(err);
+  }
+}
+
+function startVideoFile(file) {
+  video.srcObject = null;
+  video.src = URL.createObjectURL(file);
+  video.loop = true;
+  video.play();
+  beginSession();
+}
+
+function beginSession() {
+  running = true;
+  startWebcamBtn.disabled = true;
+  videoFileInput.disabled = true;
+  stopBtn.disabled = false;
+  lastDetections = [];
+  fpsSmoothed = 0;
+  connectWs();
+  requestAnimationFrame(captureLoop);
+}
+
+function stopSession() {
+  running = false;
+  startWebcamBtn.disabled = false;
+  videoFileInput.disabled = false;
+  stopBtn.disabled = true;
+  setStatus("Idle", "");
+  fpsBadge.textContent = "-- FPS";
+
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(t => t.stop());
+    mediaStream = null;
+  }
+  video.pause();
+  video.srcObject = null;
+  video.src = "";
+
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+}
+
+startWebcamBtn.addEventListener("click", startWebcam);
+stopBtn.addEventListener("click", stopSession);
+videoFileInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (file) startVideoFile(file);
+});
+
+resizeOverlay();
+</script>
+</body>
+</html>

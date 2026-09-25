@@ -1,0 +1,9 @@
+.venv
+data
+runs
+scripts
+*.pyc
+__pycache__
+.git
+.DS_Store
+*.md
