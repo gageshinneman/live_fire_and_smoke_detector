@@ -89,7 +89,7 @@
 
     <!--webcam/demo video/upload toggle, plus the stop button-->
     <div class="bg-[#fefdfb] dark:bg-[#161b22] border border-[#e3e0d8] dark:border-[#30363d] rounded-lg p-3.5 sm:p-4 transition-colors duration-[400ms]">
-      <h2 class="text-[0.72rem] m-0 mb-3 text-[#8c8a83] dark:text-[#8b949e] uppercase tracking-wide font-semibold">Source</h2>
+      <h2 class="text-[0.72rem] m-0 mb-3 text-[#8c8a83] dark:text-[#8b949e] tracking-wide font-semibold">Source</h2>
       <div class="flex border border-[#e3e0d8] dark:border-[#30363d] rounded-md overflow-hidden mb-2.5">
         <button id="webcamToggle" class="flex-1 bg-[#1a1a18] text-[#fefdfb] border-none px-[6px] py-[9px] sm:px-[10px] text-[0.8rem] sm:text-[0.85rem] cursor-pointer font-sans">Webcam</button>
         <button id="demoVideoToggle" class="flex-1 bg-[#fefdfb] dark:bg-[#161b22] text-[#1a1a18] dark:text-[#c9d1d9] border-none border-l border-[#e3e0d8] dark:border-[#30363d] px-[6px] py-[9px] sm:px-[10px] text-[0.8rem] sm:text-[0.85rem] cursor-pointer font-sans">Demo video</button>
@@ -104,7 +104,7 @@
     </div>
 
     <div class="bg-[#fefdfb] dark:bg-[#161b22] border border-[#e3e0d8] dark:border-[#30363d] rounded-lg p-3.5 sm:p-4 transition-colors duration-[400ms]">
-      <h2 class="text-[0.72rem] m-0 mb-3 text-[#8c8a83] dark:text-[#8b949e] uppercase tracking-wide font-semibold">Confidence &ge;</h2>
+      <h2 class="text-[0.72rem] m-0 mb-3 text-[#8c8a83] dark:text-[#8b949e] tracking-wide font-semibold">Confidence &ge;</h2>
       <div class="flex items-center gap-2.5 text-[0.85rem]">
         <input type="range" id="confSlider" min="0.05" max="0.95" step="0.05" value="0.25"
           class="flex-1 accent-[#1a1a18] dark:accent-[#c9d1d9]">
@@ -118,20 +118,20 @@
 
     <!--live status board (updated instantly per frame) plus the debounced event log below it-->
     <div class="bg-[#fefdfb] dark:bg-[#161b22] border border-[#e3e0d8] dark:border-[#30363d] rounded-lg p-3.5 sm:p-4 transition-colors duration-[400ms]">
-      <h2 class="text-[0.72rem] m-0 mb-3 text-[#8c8a83] dark:text-[#8b949e] uppercase tracking-wide font-semibold flex justify-between items-baseline">
-        Detections <span class="normal-case tracking-normal text-[0.72rem]">live</span>
+      <h2 class="text-[0.72rem] m-0 mb-3 text-[#8c8a83] dark:text-[#8b949e] tracking-wide font-semibold flex justify-between items-baseline">
+        Detections <span class="tracking-normal text-[0.72rem]">live</span>
       </h2>
       <div class="flex flex-col gap-2 mb-3.5 pb-3.5 border-b border-[#e3e0d8] dark:border-[#30363d] text-[0.8rem]">
         <div id="statusRow-smoke" class="flex items-center flex-wrap gap-1 sm:gap-2 px-1.5 py-1.5 -mx-1.5 rounded-md transition-colors duration-[250ms]">
           <span class="w-[9px] h-[9px] rounded-sm bg-[#d9a521] dark:bg-[#9e9600] shrink-0"></span>
-          <span class="cls-name uppercase font-semibold w-11 tracking-wide text-[#1a1a18] dark:text-[#c9d1d9]">smoke</span>
-          <span class="state-dot w-[7px] h-[7px] rounded-full shrink-0 border-[1.5px] border-[#8c8a83] dark:border-[#8b949e] bg-transparent"></span>
+          <span class="cls-name font-semibold w-11 tracking-wide text-[#1a1a18] dark:text-[#c9d1d9]">smoke</span>
+          <!-- <span class="state-dot w-[7px] h-[7px] rounded-full shrink-0 border-[1.5px] border-[#8c8a83] dark:border-[#8b949e] bg-transparent"></span> -->
           <span class="state-text ml-[22px] basis-full sm:ml-auto sm:basis-auto text-left text-[#8c8a83] dark:text-[#8b949e]">no detection</span>
         </div>
         <div id="statusRow-fire" class="flex items-center flex-wrap gap-1 sm:gap-2 px-1.5 py-1.5 -mx-1.5 rounded-md transition-colors duration-[250ms]">
           <span class="w-[9px] h-[9px] rounded-sm bg-[#c9463b] dark:bg-[#d13a4a] shrink-0"></span>
-          <span class="cls-name uppercase font-semibold w-11 tracking-wide text-[#1a1a18] dark:text-[#c9d1d9]">fire</span>
-          <span class="state-dot w-[7px] h-[7px] rounded-full shrink-0 border-[1.5px] border-[#8c8a83] dark:border-[#8b949e] bg-transparent"></span>
+          <span class="cls-name font-semibold w-11 tracking-wide text-[#1a1a18] dark:text-[#c9d1d9]">fire</span>
+          <!-- <span class="state-dot w-[7px] h-[7px] rounded-full shrink-0 border-[1.5px] border-[#8c8a83] dark:border-[#8b949e] bg-transparent"></span> -->
           <span class="state-text ml-[22px] basis-full sm:ml-auto sm:basis-auto text-left text-[#8c8a83] dark:text-[#8b949e]">no detection</span>
         </div>
       </div>
@@ -143,8 +143,8 @@
 
     <!--rolling 60s line chart, drawn on canvas by drawChart() below-->
     <div class="bg-[#fefdfb] dark:bg-[#161b22] border border-[#e3e0d8] dark:border-[#30363d] rounded-lg p-3.5 sm:p-4 transition-colors duration-[400ms]">
-      <h2 class="text-[0.72rem] m-0 mb-3 text-[#8c8a83] dark:text-[#8b949e] uppercase tracking-wide font-semibold flex justify-between items-baseline">
-        Frame Coverage <span class="normal-case tracking-normal text-[0.72rem]">last 60s</span>
+      <h2 class="text-[0.72rem] m-0 mb-3 text-[#8c8a83] dark:text-[#8b949e] tracking-wide font-semibold flex justify-between items-baseline">
+        Frame Coverage <span class="tracking-normal text-[0.72rem]">last 60s</span>
       </h2>
       <div class="relative w-full h-[140px] sm:h-[160px]">
         <canvas id="timelineChart" class="w-full h-full block"></canvas>
@@ -256,6 +256,7 @@ confSlider.addEventListener("input", () => {
 //- classes to add when not isOn) (isOn - which state to apply)
 //returns: nothing
 function swapClasses(el, onClasses, offClasses, isOn) {
+  if (!el) return; //element may be missing from the markup, e.g. commented out
   el.classList.remove(...(isOn ? offClasses : onClasses));
   el.classList.add(...(isOn ? onClasses : offClasses));
 }
