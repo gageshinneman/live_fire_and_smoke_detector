@@ -21,6 +21,12 @@ COPY model/ model/
 
 ENV MODEL_PATH=/app/model/best.pt
 
+# Caps the underlying BLAS/OpenMP thread pools before torch/opencv initialize
+# them at import time, so they never oversubscribe a small/shared cloud CPU.
+ENV OMP_NUM_THREADS=1
+ENV MKL_NUM_THREADS=1
+ENV OPENBLAS_NUM_THREADS=1
+
 EXPOSE 8000
 
 # Render (and most PaaS hosts) inject a PORT env var the app must bind to;
