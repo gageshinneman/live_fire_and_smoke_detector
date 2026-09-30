@@ -1,12 +1,8 @@
-"""
-Simple script client for testing the /ws/detect WebSocket endpoint locally,
-without needing a frontend. Streams frames from a video file (or webcam)
-and prints the detections returned for each.
-
-Usage:
-  python3 backend/test_client.py --source path/to/video.mp4
-  python3 backend/test_client.py --source 0        # webcam
-"""
+#simple script client for testing the /ws/detect websocket endpoint locally, without
+#needing a frontend. streams frames from a video file or webcam and prints the
+#detections returned for each
+#usage: python3 backend/test_client.py --source path/to/video.mp4
+#       python3 backend/test_client.py --source 0   #webcam
 import argparse
 import asyncio
 import time
@@ -15,7 +11,15 @@ import cv2
 import websockets
 
 
+#opens the source, connects to the websocket, and sends frames one at a time,
+#waiting for a response before sending the next (mirrors how the real frontend paces
+#itself, so this is a decent stand in for round trip timing)
+#input: (source - webcam index or video file path) (url - the ws:// endpoint to connect
+#to) (max_frames - stop after sending this many) (jpeg_quality - jpeg encode quality,
+#0-100)
+#returns: nothing, prints each response and a final frames/s summary
 async def stream(source, url, max_frames, jpeg_quality):
+    #source might be a webcam index passed as a string, try to convert it
     try:
         source = int(source)
     except ValueError:

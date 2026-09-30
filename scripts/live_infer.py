@@ -1,13 +1,9 @@
-"""
-Phase 3: local live inference. Grabs frames from a webcam (or a video file
-as a fallback demo source), runs the trained YOLOv8 model on each frame,
-draws boxes live, and reports FPS.
-
-Usage:
-  python3 scripts/live_infer.py                     # webcam (device 0)
-  python3 scripts/live_infer.py --source path.mp4    # looped video file
-  python3 scripts/live_infer.py --source 1           # webcam device 1
-"""
+#local live inference, grabs frames from a webcam (or a video file as a fallback
+#demo source), runs the trained yolov8 model on each frame, draws boxes live, and
+#reports fps
+#usage: python3 scripts/live_infer.py                     #webcam (device 0)
+#       python3 scripts/live_infer.py --source path.mp4   #looped video file
+#       python3 scripts/live_infer.py --source 1          #webcam device 1
 import argparse
 import time
 from pathlib import Path
@@ -20,8 +16,12 @@ CLASS_NAMES = ["smoke", "fire"]
 COLORS = {0: (0, 255, 255), 1: (0, 0, 255)}  # BGR: smoke=yellow, fire=red
 
 
+#figures out whether source is a webcam index or a video file path, and opens it
+#input: (source - a string, either a webcam index like "0" or a path to a video file)
+#returns: (cap, source, is_file), the opened VideoCapture, the source value (int if
+#it was a webcam index), and whether it's a file
 def open_source(source):
-    # Try to interpret as a webcam index; otherwise treat as a file path.
+    #tries to interpret as a webcam index, otherwise treats it as a file path
     try:
         source = int(source)
     except ValueError:
@@ -31,6 +31,10 @@ def open_source(source):
     return cap, source, is_file
 
 
+#draws boxes and labels for every detection above the confidence threshold, in place
+#input: (frame - the bgr frame to draw on) (result - a single ultralytics predict()
+#result) (conf_thres - minimum confidence to draw a box for)
+#returns: the same frame, with boxes drawn on it
 def draw_detections(frame, result, conf_thres):
     for box in result.boxes:
         conf = float(box.conf.item())
@@ -42,14 +46,19 @@ def draw_detections(frame, result, conf_thres):
         cv2.rectangle(frame, (x0, y0), (x1, y1), color, 2)
         label = f"{CLASS_NAMES[cls]} {conf:.2f}"
         (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+        #filled label background behind the text so it's readable on any frame
         cv2.rectangle(frame, (x0, y0 - th - 8), (x0 + tw + 4, y0), color, -1)
         cv2.putText(frame, label, (x0 + 2, y0 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
     return frame
 
 
+#entry point, loads the model, opens the source, and loops reading/predicting/
+#drawing/displaying frames until the source ends or 'q' is pressed
+#input: none, reads args from the command line
+#returns: nothing, opens a live opencv window as a side effect
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--weights", default=str(ROOT / "runs/detect/runs/train/baseline-3/weights/best.pt"))
+    parser.add_argument("--weights", default=str(ROOT / "model/best.pt"))
     parser.add_argument("--source", default="0", help="webcam index (e.g. 0) or path to a video file")
     parser.add_argument("--conf", type=float, default=0.25)
     parser.add_argument("--imgsz", type=int, default=640)
@@ -67,11 +76,12 @@ def main():
     print("Press 'q' to quit.")
 
     fps_smoothed = 0.0
-    alpha = 0.1  # EMA smoothing factor for FPS display
+    alpha = 0.1  #ema smoothing factor for the fps readout, so it doesn't jump around every frame
 
     while True:
         ok, frame = cap.read()
         if not ok:
+            #video files hit end of stream, loop back to the start instead of quitting
             if is_file and args.loop:
                 cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                 continue

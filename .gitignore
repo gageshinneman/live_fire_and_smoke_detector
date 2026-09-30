@@ -3,7 +3,7 @@
 __pycache__/
 *.pyc
 
-# Dataset (large, third-party — see data.yaml and Phase 1 licensing notes)
+# Dataset (large, third-party, see data.yaml and Phase 1 licensing notes)
 data/
 
 # Training runs/checkpoints (large; the deployed model lives in model/best.pt)
@@ -15,6 +15,12 @@ runs/
 
 # Exploration outputs (regenerable via scripts/)
 scripts/exploration_output/
+
+# Demo video, unclear redistribution rights, kept local-only
+/frontend/wildfire.mp4
+
+# Personal reference file, not part of this project
+/comment_examples.py
 
 # OS
 .DS_Store

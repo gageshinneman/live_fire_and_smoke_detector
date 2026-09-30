@@ -3,198 +3,223 @@
 <head>
 <meta charset="UTF-8">
 <title>Wildfire Smoke/Fire Detection</title>
-<style>
-  :root {
-    color-scheme: dark;
-    --bg: #0d1117;
-    --panel: #161b22;
-    --border: #30363d;
-    --text: #c9d1d9;
-    --muted: #8b949e;
-    --accent: #58a6ff;
-    --smoke: #e6c619;
-    --fire: #f85149;
-    --ok: #3fb950;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    padding: 24px;
-  }
-  h1 { font-size: 1.3rem; margin: 0 0 4px; }
-  .subtitle { color: var(--muted); margin: 0 0 20px; font-size: 0.9rem; }
-
-  .layout {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-    align-items: flex-start;
-  }
-
-  .video-panel {
-    position: relative;
-    background: #000;
-    border-radius: 10px;
-    overflow: hidden;
-    border: 1px solid var(--border);
-    width: min(100%, 720px);
-    aspect-ratio: 16 / 9;
-  }
-  video, canvas.overlay {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    object-fit: contain;
-  }
-  canvas.overlay { pointer-events: none; }
-
-  .status-badge {
-    position: absolute;
-    top: 10px; left: 10px;
-    background: rgba(0,0,0,0.6);
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    z-index: 2;
-  }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-  .dot.connected { background: var(--ok); }
-  .dot.error { background: var(--fire); }
-
-  .fps-badge {
-    position: absolute;
-    top: 10px; right: 10px;
-    background: rgba(0,0,0,0.6);
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    z-index: 2;
-  }
-
-  .side-panel {
-    flex: 1;
-    min-width: 280px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .card {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 16px;
-  }
-  .card h2 { font-size: 0.85rem; margin: 0 0 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-
-  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
-  button, label.file-btn {
-    background: #21262d;
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 8px 14px;
-    font-size: 0.85rem;
-    cursor: pointer;
-  }
-  button:hover, label.file-btn:hover { background: #30363d; }
-  button:disabled { opacity: 0.4; cursor: not-allowed; }
-  button.primary { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: 600; }
-  button.stop { background: var(--fire); color: #0d1117; border-color: var(--fire); font-weight: 600; }
-  input[type="file"] { display: none; }
-
-  .slider-row { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; }
-  input[type="range"] { flex: 1; }
-
-  .legend { display: flex; gap: 16px; font-size: 0.8rem; margin-top: 8px; }
-  .legend span { display: flex; align-items: center; gap: 6px; }
-  .swatch { width: 10px; height: 10px; border-radius: 2px; }
-
-  .log {
-    max-height: 260px;
-    overflow-y: auto;
-    font-size: 0.8rem;
-    display: flex;
-    flex-direction: column-reverse;
-    gap: 4px;
-  }
-  .log-entry { display: flex; justify-content: space-between; padding: 4px 6px; border-radius: 4px; background: #0d1117; }
-  .log-entry.smoke { border-left: 3px solid var(--smoke); }
-  .log-entry.fire { border-left: 3px solid var(--fire); }
-  .log-empty { color: var(--muted); font-size: 0.8rem; }
-</style>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  //dark mode toggled by adding/removing the "dark" class on <html>, see applyTheme() below
+  tailwind.config = { darkMode: "selector" };
+</script>
 </head>
-<body>
+<body class="min-h-screen flex flex-col bg-[#f6f5f1] dark:bg-[#0d1117] text-[#1a1a18] dark:text-[#c9d1d9] font-sans px-4 pt-4 pb-3.5 sm:px-8 sm:pt-7 sm:pb-5 transition-colors duration-[400ms]">
 
-<h1>Live Wildfire Smoke/Fire Detection</h1>
-<p class="subtitle">YOLOv8 fine-tuned on D-Fire, served over a WebSocket for real-time inference.</p>
+<!--title, github/dataset links, dark mode toggle-->
+<header class="flex items-center justify-between flex-wrap gap-2.5 mb-1">
+  <div class="flex items-center gap-2.5">
+    <h1 class="text-[0.92rem] sm:text-[1.05rem] font-bold m-0">Live Wildfire Smoke/Fire Detection</h1>
+  </div>
+  <div class="flex items-center gap-3 sm:gap-5 text-[0.78rem] sm:text-[0.82rem]">
+    <a href="https://github.com/gageshinneman/live_wildfire_detector" target="_blank" rel="noopener" class="no-underline hover:underline">GitHub &#8599;</a>
+    <a href="https://github.com/gaia-solutions-on-demand/DFireDataset" target="_blank" rel="noopener" class="no-underline hover:underline">D-Fire dataset &#8599;</a>
+    <button id="themeToggle" title="Toggle dark mode" aria-label="Toggle dark mode"
+      class="bg-[#fefdfb] dark:bg-[#161b22] text-[#1a1a18] dark:text-[#c9d1d9] border border-[#e3e0d8] dark:border-[#30363d] rounded-md w-[30px] h-[30px] text-[0.9rem] leading-none cursor-pointer transition-all duration-[400ms] hover:bg-[#e3e0d8] dark:hover:bg-[#30363d] dark:rotate-180">&#9789;</button>
+  </div>
+</header>
+<p class="text-[#8c8a83] dark:text-[#8b949e] mt-1.5 mb-4 sm:mb-5 text-[0.82rem] sm:text-[0.88rem]">YOLOv8 fine-tuned on D-Fire, served over a WebSocket for real-time inference.</p>
 
-<div class="layout">
-  <div class="video-panel">
-    <video id="video" autoplay muted playsinline></video>
-    <canvas id="overlay" class="overlay"></canvas>
-    <div class="status-badge">
-      <div id="statusDot" class="dot"></div>
-      <span id="statusText">Idle</span>
+<!--two column layout, video/stats/pipeline on the left, source/confidence/detections/chart cards on the right-->
+<div class="flex gap-4 sm:gap-5 flex-wrap items-start">
+  <div class="w-full min-w-0 sm:min-w-[320px] sm:flex-[2] flex flex-col">
+
+    <!--live video, canvas overlay draws boxes on top, placeholder text shows until a session starts-->
+    <div class="relative bg-[#1c1c1a] rounded-lg overflow-hidden border border-[#e3e0d8] dark:border-[#30363d] w-full aspect-video">
+      <video id="video" autoplay muted playsinline class="absolute inset-0 w-full h-full object-contain"></video>
+      <canvas id="overlay" class="absolute inset-0 w-full h-full object-contain pointer-events-none"></canvas>
+      <div id="placeholderText" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[#6b6a66] text-[0.85rem] pointer-events-none z-[1]">live feed: webcam or demo video</div>
     </div>
-    <div class="fps-badge" id="fpsBadge">-- FPS</div>
+
+    <!--connection status, round trip fps, and last inference time-->
+    <div class="flex border border-[#e3e0d8] dark:border-[#30363d] border-t-0 rounded-b-lg bg-[#fefdfb] dark:bg-[#161b22] transition-colors duration-[400ms]">
+      <div class="flex-1 px-2.5 py-2.5 sm:px-4 sm:py-3 border-r border-[#e3e0d8] dark:border-[#30363d]">
+        <div class="text-[0.66rem] sm:text-[0.72rem] text-[#8c8a83] dark:text-[#8b949e] mb-1">Status</div>
+        <div class="text-[0.84rem] sm:text-[0.95rem] flex items-center gap-1.5">
+          <span id="statusDot" class="w-[7px] h-[7px] rounded-full bg-[#8c8a83] dark:bg-[#8b949e] shrink-0"></span>
+          <span id="statusText">Idle</span>
+        </div>
+      </div>
+      <div class="flex-1 px-2.5 py-2.5 sm:px-4 sm:py-3 border-r border-[#e3e0d8] dark:border-[#30363d]">
+        <div class="text-[0.66rem] sm:text-[0.72rem] text-[#8c8a83] dark:text-[#8b949e] mb-1">Throughput</div>
+        <div class="text-[0.84rem] sm:text-[0.95rem]" id="throughputValue">-- fps</div>
+      </div>
+      <div class="flex-1 px-2.5 py-2.5 sm:px-4 sm:py-3">
+        <div class="text-[0.66rem] sm:text-[0.72rem] text-[#8c8a83] dark:text-[#8b949e] mb-1">Inference</div>
+        <div class="text-[0.84rem] sm:text-[0.95rem]" id="inferenceValue">-- ms</div>
+      </div>
+    </div>
+
+    <!--just a diagram, purely decorative, doesn't read from any live state-->
+    <div class="flex flex-col sm:flex-row items-stretch gap-2 mt-4 flex-wrap">
+      <div class="w-full text-[0.72rem] text-[#8c8a83] dark:text-[#8b949e] mb-0.5">Pipeline</div>
+      <div class="w-full min-w-0 sm:w-auto sm:min-w-[110px] sm:flex-1 border border-[#e3e0d8] dark:border-[#30363d] bg-[#fefdfb] dark:bg-[#161b22] rounded-md px-3 py-2.5 transition-colors duration-[400ms]">
+        <div class="text-[0.82rem] font-semibold mb-[3px]">Browser</div>
+        <div class="text-[0.72rem] text-[#8c8a83] dark:text-[#8b949e]">capture &le;12 Hz</div>
+      </div>
+      <div class="flex items-center justify-center text-[#8c8a83] dark:text-[#8b949e] text-[0.9rem] rotate-90 sm:rotate-0">&rarr;</div>
+      <div class="w-full min-w-0 sm:w-auto sm:min-w-[110px] sm:flex-1 border border-[#e3e0d8] dark:border-[#30363d] bg-[#fefdfb] dark:bg-[#161b22] rounded-md px-3 py-2.5 transition-colors duration-[400ms]">
+        <div class="text-[0.82rem] font-semibold mb-[3px]">JPEG</div>
+        <div class="text-[0.72rem] text-[#8c8a83] dark:text-[#8b949e]">640 px, q 0.8</div>
+      </div>
+      <div class="flex items-center justify-center text-[#8c8a83] dark:text-[#8b949e] text-[0.9rem] rotate-90 sm:rotate-0">&rarr;</div>
+      <div class="w-full min-w-0 sm:w-auto sm:min-w-[110px] sm:flex-1 border border-[#e3e0d8] dark:border-[#30363d] bg-[#fefdfb] dark:bg-[#161b22] rounded-md px-3 py-2.5 transition-colors duration-[400ms]">
+        <div class="text-[0.82rem] font-semibold mb-[3px]">WebSocket</div>
+        <div class="text-[0.72rem] text-[#8c8a83] dark:text-[#8b949e]">/ws/detect</div>
+      </div>
+      <div class="flex items-center justify-center text-[#8c8a83] dark:text-[#8b949e] text-[0.9rem] rotate-90 sm:rotate-0">&rarr;</div>
+      <div class="w-full min-w-0 sm:w-auto sm:min-w-[110px] sm:flex-1 border border-[#e3e0d8] dark:border-[#30363d] bg-[#fefdfb] dark:bg-[#161b22] rounded-md px-3 py-2.5 transition-colors duration-[400ms]">
+        <div class="text-[0.82rem] font-semibold mb-[3px]">YOLOv8</div>
+        <div class="text-[0.72rem] text-[#8c8a83] dark:text-[#8b949e]">FastAPI + OpenCV</div>
+      </div>
+      <div class="flex items-center justify-center text-[#8c8a83] dark:text-[#8b949e] text-[0.9rem] rotate-90 sm:rotate-0">&rarr;</div>
+      <div class="w-full min-w-0 sm:w-auto sm:min-w-[110px] sm:flex-1 border border-[#e3e0d8] dark:border-[#30363d] bg-[#fefdfb] dark:bg-[#161b22] rounded-md px-3 py-2.5 transition-colors duration-[400ms]">
+        <div class="text-[0.82rem] font-semibold mb-[3px]">Boxes</div>
+        <div class="text-[0.72rem] text-[#8c8a83] dark:text-[#8b949e]">JSON &rarr; canvas</div>
+      </div>
+    </div>
   </div>
 
-  <div class="side-panel">
-    <div class="card">
-      <h2>Source</h2>
-      <div class="btn-row">
-        <button id="startWebcamBtn" class="primary">Start Webcam</button>
-        <label class="file-btn" for="videoFile">Load Demo Video</label>
-        <input type="file" id="videoFile" accept="video/*">
-        <button id="stopBtn" class="stop" disabled>Stop</button>
+  <div class="w-full min-w-0 sm:min-w-[260px] sm:flex-1 flex flex-col gap-4">
+
+    <!--webcam/demo video/upload toggle, plus the stop button-->
+    <div class="bg-[#fefdfb] dark:bg-[#161b22] border border-[#e3e0d8] dark:border-[#30363d] rounded-lg p-3.5 sm:p-4 transition-colors duration-[400ms]">
+      <h2 class="text-[0.72rem] m-0 mb-3 text-[#8c8a83] dark:text-[#8b949e] uppercase tracking-wide font-semibold">Source</h2>
+      <div class="flex border border-[#e3e0d8] dark:border-[#30363d] rounded-md overflow-hidden mb-2.5">
+        <button id="webcamToggle" class="flex-1 bg-[#1a1a18] text-[#fefdfb] border-none px-[6px] py-[9px] sm:px-[10px] text-[0.8rem] sm:text-[0.85rem] cursor-pointer font-sans">Webcam</button>
+        <button id="demoVideoToggle" class="flex-1 bg-[#fefdfb] dark:bg-[#161b22] text-[#1a1a18] dark:text-[#c9d1d9] border-none border-l border-[#e3e0d8] dark:border-[#30363d] px-[6px] py-[9px] sm:px-[10px] text-[0.8rem] sm:text-[0.85rem] cursor-pointer font-sans">Demo video</button>
+        <button id="demoToggle" class="flex-1 bg-[#fefdfb] dark:bg-[#161b22] text-[#1a1a18] dark:text-[#c9d1d9] border-none border-l border-[#e3e0d8] dark:border-[#30363d] px-[6px] py-[9px] sm:px-[10px] text-[0.8rem] sm:text-[0.85rem] cursor-pointer font-sans">Upload video</button>
+      </div>
+      <!--hidden, only used to open the native file picker when "upload video" is clicked-->
+      <input type="file" id="videoFile" accept="video/*" class="hidden">
+      <button id="stopBtn" disabled
+        class="w-full bg-[#fefdfb] dark:bg-[#161b22] text-[#c9463b] dark:text-[#d13a4a] border border-[#e3e0d8] dark:border-[#30363d] rounded-md px-[10px] py-[9px] text-[0.85rem] cursor-pointer font-sans disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-[400ms]">
+        <span class="mr-1">&#9632;</span>Stop session
+      </button>
+    </div>
+
+    <div class="bg-[#fefdfb] dark:bg-[#161b22] border border-[#e3e0d8] dark:border-[#30363d] rounded-lg p-3.5 sm:p-4 transition-colors duration-[400ms]">
+      <h2 class="text-[0.72rem] m-0 mb-3 text-[#8c8a83] dark:text-[#8b949e] uppercase tracking-wide font-semibold">Confidence &ge;</h2>
+      <div class="flex items-center gap-2.5 text-[0.85rem]">
+        <input type="range" id="confSlider" min="0.05" max="0.95" step="0.05" value="0.25"
+          class="flex-1 accent-[#1a1a18] dark:accent-[#c9d1d9]">
+        <span id="confValue" class="text-[0.85rem] min-w-[34px] text-right">0.25</span>
+      </div>
+      <div class="flex gap-4 text-[0.78rem] mt-2.5 text-[#8c8a83] dark:text-[#8b949e]">
+        <span class="flex items-center gap-1.5"><span class="w-[9px] h-[9px] rounded-sm bg-[#d9a521] dark:bg-[#9e9600]"></span>smoke</span>
+        <span class="flex items-center gap-1.5"><span class="w-[9px] h-[9px] rounded-sm bg-[#c9463b] dark:bg-[#d13a4a]"></span>fire</span>
       </div>
     </div>
 
-    <div class="card">
-      <h2>Confidence Threshold</h2>
-      <div class="slider-row">
-        <input type="range" id="confSlider" min="0.05" max="0.95" step="0.05" value="0.25">
-        <span id="confValue">0.25</span>
+    <!--live status board (updated instantly per frame) plus the debounced event log below it-->
+    <div class="bg-[#fefdfb] dark:bg-[#161b22] border border-[#e3e0d8] dark:border-[#30363d] rounded-lg p-3.5 sm:p-4 transition-colors duration-[400ms]">
+      <h2 class="text-[0.72rem] m-0 mb-3 text-[#8c8a83] dark:text-[#8b949e] uppercase tracking-wide font-semibold flex justify-between items-baseline">
+        Detections <span class="normal-case tracking-normal text-[0.72rem]">live</span>
+      </h2>
+      <div class="flex flex-col gap-2 mb-3.5 pb-3.5 border-b border-[#e3e0d8] dark:border-[#30363d] text-[0.8rem]">
+        <div id="statusRow-smoke" class="flex items-center flex-wrap gap-1 sm:gap-2 px-1.5 py-1.5 -mx-1.5 rounded-md transition-colors duration-[250ms]">
+          <span class="w-[9px] h-[9px] rounded-sm bg-[#d9a521] dark:bg-[#9e9600] shrink-0"></span>
+          <span class="cls-name uppercase font-semibold w-11 tracking-wide text-[#1a1a18] dark:text-[#c9d1d9]">smoke</span>
+          <span class="state-dot w-[7px] h-[7px] rounded-full shrink-0 border-[1.5px] border-[#8c8a83] dark:border-[#8b949e] bg-transparent"></span>
+          <span class="state-text ml-[22px] basis-full sm:ml-auto sm:basis-auto text-left text-[#8c8a83] dark:text-[#8b949e]">no detection</span>
+        </div>
+        <div id="statusRow-fire" class="flex items-center flex-wrap gap-1 sm:gap-2 px-1.5 py-1.5 -mx-1.5 rounded-md transition-colors duration-[250ms]">
+          <span class="w-[9px] h-[9px] rounded-sm bg-[#c9463b] dark:bg-[#d13a4a] shrink-0"></span>
+          <span class="cls-name uppercase font-semibold w-11 tracking-wide text-[#1a1a18] dark:text-[#c9d1d9]">fire</span>
+          <span class="state-dot w-[7px] h-[7px] rounded-full shrink-0 border-[1.5px] border-[#8c8a83] dark:border-[#8b949e] bg-transparent"></span>
+          <span class="state-text ml-[22px] basis-full sm:ml-auto sm:basis-auto text-left text-[#8c8a83] dark:text-[#8b949e]">no detection</span>
+        </div>
       </div>
-      <div class="legend">
-        <span><span class="swatch" style="background:var(--smoke)"></span>smoke</span>
-        <span><span class="swatch" style="background:var(--fire)"></span>fire</span>
+      <div class="log max-h-[280px] overflow-y-auto text-[0.78rem] flex flex-col gap-2.5" id="log">
+        <!--"log-empty" class is a js hook, logEvent() removes this the first time something's logged-->
+        <div class="log-empty text-[#8c8a83] dark:text-[#8b949e] text-[0.8rem] font-sans">No events yet.</div>
       </div>
     </div>
 
-    <div class="card">
-      <h2>Detection Log</h2>
-      <div class="log" id="log">
-        <div class="log-empty">No detections yet.</div>
+    <!--rolling 60s line chart, drawn on canvas by drawChart() below-->
+    <div class="bg-[#fefdfb] dark:bg-[#161b22] border border-[#e3e0d8] dark:border-[#30363d] rounded-lg p-3.5 sm:p-4 transition-colors duration-[400ms]">
+      <h2 class="text-[0.72rem] m-0 mb-3 text-[#8c8a83] dark:text-[#8b949e] uppercase tracking-wide font-semibold flex justify-between items-baseline">
+        Frame Coverage <span class="normal-case tracking-normal text-[0.72rem]">last 60s</span>
+      </h2>
+      <div class="relative w-full h-[140px] sm:h-[160px]">
+        <canvas id="timelineChart" class="w-full h-full block"></canvas>
+        <div id="chartTooltip" class="absolute top-2 pointer-events-none bg-[#fefdfb] dark:bg-[#161b22] border border-[#e3e0d8] dark:border-[#30363d] rounded-md px-2.5 py-1.5 text-[0.74rem] leading-relaxed whitespace-nowrap opacity-0 transition-opacity duration-150 z-[2]"></div>
+      </div>
+      <div class="flex gap-4 text-[0.78rem] mt-2.5 text-[#8c8a83] dark:text-[#8b949e]">
+        <span class="flex items-center gap-1.5"><span class="w-[9px] h-[9px] rounded-sm bg-[#d9a521] dark:bg-[#9e9600]"></span>smoke</span>
+        <span class="flex items-center gap-1.5"><span class="w-[9px] h-[9px] rounded-sm bg-[#c9463b] dark:bg-[#d13a4a]"></span>fire</span>
       </div>
     </div>
   </div>
 </div>
 
+<footer class="flex justify-between border-t border-[#e3e0d8] dark:border-[#30363d] mt-auto pt-3.5 text-[0.78rem] text-[#8c8a83] dark:text-[#8b949e]">
+  <span>D-Fire: 14,122 train &middot; 3,099 val &middot; 4,306 test images &middot; 2 classes</span>
+  <span>Gage Shinneman</span>
+</footer>
+
 <script>
+//dark mode toggle, persisted to localStorage so it sticks across reloads
+const themeToggle = document.getElementById("themeToggle");
+
+//flips the "dark" class on <html> (tailwind reads this) and swaps the toggle icon
+//input: (theme - "dark" or "light")
+//returns: nothing
+function applyTheme(theme) {
+  document.documentElement.classList.toggle("dark", theme === "dark");
+  themeToggle.textContent = theme === "dark" ? "☀" : "☽";
+}
+let savedTheme = null;
+try { savedTheme = localStorage.getItem("theme"); } catch {}
+applyTheme(savedTheme === "dark" ? "dark" : "light");
+
+themeToggle.addEventListener("click", () => {
+  const next = document.documentElement.classList.contains("dark") ? "light" : "dark";
+  applyTheme(next);
+  try { localStorage.setItem("theme", next); } catch {}
+});
+
+//input: none, reads the current dark class off <html>
+//returns: true if dark mode is currently on
+function isDark() { return document.documentElement.classList.contains("dark"); }
+
+//canvas drawing needs real color strings, can't use tailwind classes on pixels, so
+//these are kept in sync by hand with the tailwind arbitrary value hexes used above
+const COLORS = {
+  light: { smoke: "#d9a521", fire: "#c9463b", border: "#e3e0d8", muted: "#8c8a83", text: "#1a1a18" },
+  dark:  { smoke: "#9e9600", fire: "#d13a4a", border: "#30363d", muted: "#8b949e", text: "#c9d1d9" },
+};
+//input: (cls - "smoke" or "fire")
+//returns: the hex color for that class in the current theme
+function classColor(cls) {
+  return (isDark() ? COLORS.dark : COLORS.light)[cls] || "#333";
+}
+
 const video = document.getElementById("video");
 const overlay = document.getElementById("overlay");
 const ctx = overlay.getContext("2d");
+const placeholderText = document.getElementById("placeholderText");
 const statusDot = document.getElementById("statusDot");
 const statusText = document.getElementById("statusText");
-const fpsBadge = document.getElementById("fpsBadge");
-const startWebcamBtn = document.getElementById("startWebcamBtn");
+const throughputValue = document.getElementById("throughputValue");
+const inferenceValue = document.getElementById("inferenceValue");
+const webcamToggle = document.getElementById("webcamToggle");
+const demoVideoToggle = document.getElementById("demoVideoToggle");
+const demoToggle = document.getElementById("demoToggle");
 const stopBtn = document.getElementById("stopBtn");
 const videoFileInput = document.getElementById("videoFile");
 const confSlider = document.getElementById("confSlider");
 const confValue = document.getElementById("confValue");
 const logEl = document.getElementById("log");
 
-const CLASS_COLORS = { smoke: "#e6c619", fire: "#f85149" };
-const SEND_WIDTH = 640;        // downscale frames before sending, for speed
-const MAX_SEND_HZ = 12;        // cap how often we send frames
+const SEND_WIDTH = 640;        //downscale frames before sending, for speed
+const MAX_SEND_HZ = 12;        //cap how often we send frames
+const CLEAR_GRACE_MS = 1500;   //how long a class can go unseen before we call it "cleared"
 
 let ws = null;
 let mediaStream = null;
@@ -206,6 +231,15 @@ let lastDetections = [];
 let fpsSmoothed = 0;
 let lastFrameTime = performance.now();
 
+//debounced (grace period) state, driven by frame coverage so it matches the chart.
+//smooths single frame flicker for both the status board and the event log, rather
+//than snapping instantly on every dropped frame
+const classState = {
+  smoke: { active: false, startTime: 0, peakConf: 0, lastSeen: 0 },
+  fire: { active: false, startTime: 0, peakConf: 0, lastSeen: 0 },
+};
+
+//offscreen canvas used to downscale/jpeg encode each frame before sending it
 const sendCanvas = document.createElement("canvas");
 const sendCtx = sendCanvas.getContext("2d");
 
@@ -215,16 +249,45 @@ confSlider.addEventListener("input", () => {
   redrawOverlay();
 });
 
-function setStatus(text, cls) {
-  statusText.textContent = text;
-  statusDot.className = "dot" + (cls ? " " + cls : "");
+//adds/removes an explicit set of tailwind utility classes, used instead of a single
+//custom css class so every color swap stays a real tailwind class with nothing
+//custom in a stylesheet
+//input: (el - the element to update) (onClasses - classes to add when isOn) (offClasses
+//- classes to add when not isOn) (isOn - which state to apply)
+//returns: nothing
+function swapClasses(el, onClasses, offClasses, isOn) {
+  el.classList.remove(...(isOn ? offClasses : onClasses));
+  el.classList.add(...(isOn ? onClasses : offClasses));
 }
 
+const DOT_CLASSES = {
+  idle: ["bg-[#8c8a83]", "dark:bg-[#8b949e]"],
+  connected: ["bg-[#4c9a63]", "dark:bg-[#3fb950]"],
+  error: ["bg-[#c9463b]", "dark:bg-[#d13a4a]"],
+};
+
+//updates the connection status text and dot color
+//input: (text - status text to show) (kind - "connected"/"error"/anything else for idle)
+//returns: nothing
+function setStatus(text, kind) {
+  statusText.textContent = text;
+  const state = kind === "connected" ? "connected" : kind === "error" ? "error" : "idle";
+  for (const key of Object.keys(DOT_CLASSES)) {
+    statusDot.classList.remove(...DOT_CLASSES[key]);
+  }
+  statusDot.classList.add(...DOT_CLASSES[state]);
+}
+
+//input: none, reads location
+//returns: the ws:// or wss:// url for the detect endpoint, same origin as the page
 function wsUrl() {
   const proto = location.protocol === "https:" ? "wss" : "ws";
   return `${proto}://${location.host}/ws/detect`;
 }
 
+//opens the websocket and wires up its handlers, one frame's response per message
+//input: none, reads the module level ws url/state
+//returns: nothing, sets the module level `ws` variable as a side effect
 function connectWs() {
   ws = new WebSocket(wsUrl());
   ws.binaryType = "arraybuffer";
@@ -248,33 +311,43 @@ function connectWs() {
     }
     lastDetections = msg.detections || [];
     redrawOverlay();
-    logDetections(lastDetections);
+    const frameStats = computeFrameStats(lastDetections);
+    accumulateForLog(frameStats);
+    pushTimelineSample(frameStats);
 
+    inferenceValue.textContent = `${Math.round(msg.inference_ms)} ms`;
+
+    //ema smoothing so the fps readout doesn't jump around every single message
     const now = performance.now();
     const instFps = 1000 / (now - lastFrameTime);
     lastFrameTime = now;
     fpsSmoothed = fpsSmoothed === 0 ? instFps : (0.1 * instFps + 0.9 * fpsSmoothed);
-    fpsBadge.textContent = `${fpsSmoothed.toFixed(1)} FPS`;
+    throughputValue.textContent = `${fpsSmoothed.toFixed(1)} fps`;
   };
 }
 
+//input: none
+//returns: nothing, resizes the overlay canvas to match its displayed css size
 function resizeOverlay() {
   overlay.width = overlay.clientWidth;
   overlay.height = overlay.clientHeight;
 }
 window.addEventListener("resize", resizeOverlay);
 
+//clears and redraws every detection box + label on the overlay canvas, scaled up
+//from the downscaled send resolution to whatever size the video is actually shown at
+//input: none, reads lastDetections/confThreshold globals
+//returns: nothing
 function redrawOverlay() {
   resizeOverlay();
   ctx.clearRect(0, 0, overlay.width, overlay.height);
 
-  // Map detection coords (in SEND_WIDTH-scaled space) to the displayed overlay size.
   const scaleX = overlay.width / SEND_WIDTH;
   const scaleY = overlay.height / (SEND_WIDTH * (sendCanvas.height / sendCanvas.width || 1));
 
   for (const det of lastDetections) {
     if (det.confidence < confThreshold) continue;
-    const color = CLASS_COLORS[det.class_name] || "#fff";
+    const color = classColor(det.class_name);
     const x0 = det.box.x0 * scaleX;
     const y0 = det.box.y0 * scaleY;
     const w = (det.box.x1 - det.box.x0) * scaleX;
@@ -284,30 +357,342 @@ function redrawOverlay() {
     ctx.lineWidth = 2;
     ctx.strokeRect(x0, y0, w, h);
 
+    //filled label background behind the text so it's readable on any frame
     const label = `${det.class_name} ${det.confidence.toFixed(2)}`;
-    ctx.font = "13px -apple-system, sans-serif";
+    ctx.font = "12px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
     const textWidth = ctx.measureText(label).width;
     ctx.fillStyle = color;
-    ctx.fillRect(x0, Math.max(0, y0 - 18), textWidth + 8, 18);
-    ctx.fillStyle = "#000";
+    ctx.fillRect(x0, Math.max(0, y0 - 17), textWidth + 8, 17);
+    ctx.fillStyle = "#1a1a18";
     ctx.fillText(label, x0 + 4, Math.max(12, y0 - 5));
   }
 }
 
-function logDetections(detections) {
-  const above = detections.filter(d => d.confidence >= confThreshold);
-  if (above.length === 0) return;
+const SWATCH_CLASSES = {
+  smoke: "bg-[#d9a521] dark:bg-[#9e9600]",
+  fire: "bg-[#c9463b] dark:bg-[#d13a4a]",
+};
+
+//prepends one line to the event log, removing the "no events yet" placeholder the
+//first time it's called, and trims the log once it gets too long
+//input: (cls - "smoke" or "fire") (text - the event text, e.g. "detected" or "cleared...")
+//returns: nothing
+function logEvent(cls, text) {
   logEl.querySelector(".log-empty")?.remove();
   const time = new Date().toLocaleTimeString();
-  for (const det of above) {
-    const entry = document.createElement("div");
-    entry.className = `log-entry ${det.class_name}`;
-    entry.innerHTML = `<span>${det.class_name} (${det.confidence.toFixed(2)})</span><span>${time}</span>`;
-    logEl.appendChild(entry);
-  }
-  while (logEl.children.length > 100) logEl.removeChild(logEl.firstChild);
+  const entry = document.createElement("div");
+  entry.className = "flex items-baseline gap-1.5 flex-wrap";
+  entry.innerHTML = `
+    <span class="w-[9px] h-[9px] rounded-sm shrink-0 ${SWATCH_CLASSES[cls] || ""}"></span>
+    <span class="font-semibold">${cls}</span>
+    <span>${text}</span>
+    <span class="ml-auto text-[#8c8a83] dark:text-[#8b949e]">${time}</span>
+  `;
+  logEl.insertBefore(entry, logEl.firstChild);
+  while (logEl.children.length > 100) logEl.removeChild(logEl.lastChild);
 }
 
+//per class tailwind utility classes toggled when a row becomes active, swapped
+//explicitly (rather than layered on top) so exactly one color set ever applies
+const STATUS_ACCENT = {
+  smoke: {
+    row: ["bg-[#d9a521]/15", "dark:bg-[#9e9600]/15"],
+    label: ["text-[#d9a521]", "dark:text-[#9e9600]"],
+    text: ["text-[#d9a521]", "dark:text-[#9e9600]", "font-semibold"],
+    dot: ["bg-[#d9a521]", "dark:bg-[#9e9600]", "border-[#d9a521]", "dark:border-[#9e9600]", "animate-pulse"],
+  },
+  fire: {
+    row: ["bg-[#c9463b]/15", "dark:bg-[#d13a4a]/15"],
+    label: ["text-[#c9463b]", "dark:text-[#d13a4a]"],
+    text: ["text-[#c9463b]", "dark:text-[#d13a4a]", "font-semibold"],
+    dot: ["bg-[#c9463b]", "dark:bg-[#d13a4a]", "border-[#c9463b]", "dark:border-[#d13a4a]", "animate-pulse"],
+  },
+};
+const STATUS_BASE = {
+  row: [],
+  label: ["text-[#1a1a18]", "dark:text-[#c9d1d9]"],
+  text: ["text-[#8c8a83]", "dark:text-[#8b949e]"],
+  dot: ["border-[#8c8a83]", "dark:border-[#8b949e]", "bg-transparent"],
+};
+
+//repaints one status row (swatch label, dot, text) to match classState[cls].active
+//input: (cls - "smoke" or "fire")
+//returns: nothing
+function updateStatusRow(cls) {
+  const row = document.getElementById(`statusRow-${cls}`);
+  const state = classState[cls];
+  const labelEl = row.querySelector(".cls-name");
+  const dotEl = row.querySelector(".state-dot");
+  const textEl = row.querySelector(".state-text");
+  const accent = STATUS_ACCENT[cls];
+
+  swapClasses(row, accent.row, STATUS_BASE.row, state.active);
+  swapClasses(labelEl, accent.label, STATUS_BASE.label, state.active);
+  swapClasses(dotEl, accent.dot, STATUS_BASE.dot, state.active);
+  swapClasses(textEl, accent.text, STATUS_BASE.text, state.active);
+
+  if (state.active) {
+    const elapsed = Math.round((Date.now() - state.startTime) / 1000);
+    textEl.textContent = `Currently Visible · conf ${state.peakConf.toFixed(2)} · ${elapsed}s`;
+  } else {
+    textEl.textContent = "no detection";
+  }
+}
+
+//frame area a box must cover to count as "visible", matches the chart's toFixed(1)
+//rounding so a class never reads "active" while the chart shows 0.0%
+const COVERAGE_ACTIVE_THRESHOLD = 0.05;
+
+//sums box area per class as a % of the sent frame's total area, plus the highest
+//confidence seen for that class this frame
+//input: (detections - the raw detections array from one websocket message)
+//returns: { smoke: {pct, maxConf}, fire: {pct, maxConf} }
+function computeFrameStats(detections) {
+  const frameW = SEND_WIDTH;
+  const frameH = sendCanvas.height || Math.round(SEND_WIDTH * 9 / 16);
+  const frameArea = frameW * frameH;
+
+  const raw = { smoke: { area: 0, maxConf: 0 }, fire: { area: 0, maxConf: 0 } };
+  for (const det of detections) {
+    if (det.confidence < confThreshold) continue;
+    const bucket = raw[det.class_name];
+    if (!bucket) continue;
+    const area = Math.max(0, det.box.x1 - det.box.x0) * Math.max(0, det.box.y1 - det.box.y0);
+    bucket.area += area;
+    bucket.maxConf = Math.max(bucket.maxConf, det.confidence);
+  }
+
+  return {
+    smoke: { pct: (raw.smoke.area / frameArea) * 100, maxConf: raw.smoke.maxConf },
+    fire: { pct: (raw.fire.area / frameArea) * 100, maxConf: raw.fire.maxConf },
+  };
+}
+
+//debounced by CLEAR_GRACE_MS so single frame flicker doesn't cause the board or the
+//event log to flap, but driven by frame coverage (not raw confidence) so it always
+//agrees with what the chart shows once it settles
+//input: (frameStats - output of computeFrameStats() for the current message)
+//returns: nothing, updates classState and the status board/log as a side effect
+function accumulateForLog(frameStats) {
+  const now = Date.now();
+
+  for (const cls of Object.keys(classState)) {
+    const { pct, maxConf } = frameStats[cls];
+    if (pct < COVERAGE_ACTIVE_THRESHOLD) continue;
+    const state = classState[cls];
+
+    if (!state.active) {
+      state.active = true;
+      state.startTime = now;
+      state.peakConf = maxConf;
+      logEvent(cls, "detected");
+    } else {
+      state.peakConf = Math.max(state.peakConf, maxConf);
+    }
+    state.lastSeen = now;
+    updateStatusRow(cls);
+  }
+}
+
+//runs on an interval rather than only on new messages, so a class still gets
+//marked "cleared" even if the websocket goes quiet, and the elapsed time readout
+//keeps ticking between messages
+//input: none, reads/writes classState
+//returns: nothing
+function checkForClearedClasses() {
+  const now = Date.now();
+  for (const cls of Object.keys(classState)) {
+    const state = classState[cls];
+    if (state.active && now - state.lastSeen > CLEAR_GRACE_MS) {
+      const durationS = Math.round((state.lastSeen - state.startTime) / 1000);
+      logEvent(cls, `cleared · ${durationS}s, peak ${state.peakConf.toFixed(2)}`);
+      state.active = false;
+      updateStatusRow(cls);
+    } else if (state.active) {
+      updateStatusRow(cls); //keeps the elapsed time readout live between frames
+    }
+  }
+}
+setInterval(checkForClearedClasses, 300);
+
+//frame coverage timeline chart, a rolling 60s window drawn on its own canvas
+const CHART_WINDOW_MS = 60000;
+const chartCanvas = document.getElementById("timelineChart");
+const chartCtx = chartCanvas.getContext("2d");
+const chartTooltip = document.getElementById("chartTooltip");
+let timelineData = []; //{ t, smoke, fire }, % of frame area covered by boxes of each class
+let chartHoverX = null;
+
+//input: (frameStats - output of computeFrameStats() for the current message)
+//returns: nothing, appends one sample to timelineData
+function pushTimelineSample(frameStats) {
+  timelineData.push({
+    t: Date.now(),
+    smoke: frameStats.smoke.pct,
+    fire: frameStats.fire.pct,
+  });
+}
+
+//redraws the whole chart from timelineData, called every animation frame via
+//chartLoop() below so it keeps scrolling even when no new data comes in
+//input: none, reads timelineData/chartHoverX globals
+//returns: nothing
+function drawChart() {
+  const wrap = chartCanvas.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  const cssWidth = wrap.clientWidth;
+  const cssHeight = wrap.clientHeight;
+  if (chartCanvas.width !== Math.round(cssWidth * dpr) || chartCanvas.height !== Math.round(cssHeight * dpr)) {
+    chartCanvas.width = Math.round(cssWidth * dpr);
+    chartCanvas.height = Math.round(cssHeight * dpr);
+  }
+  chartCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  chartCtx.clearRect(0, 0, cssWidth, cssHeight);
+
+  //drops samples that have fully scrolled out of the window
+  const now = Date.now();
+  const windowStart = now - CHART_WINDOW_MS;
+  while (timelineData.length && timelineData[0].t < windowStart - 2000) timelineData.shift();
+  const visible = timelineData.filter(d => d.t >= windowStart);
+
+  const palette = isDark() ? COLORS.dark : COLORS.light;
+  const smokeColor = palette.smoke;
+  const fireColor = palette.fire;
+  const borderColor = palette.border;
+  const mutedColor = palette.muted;
+  const textColor = palette.text;
+
+  const padL = 4, padR = 48, padT = 10, padB = 16;
+  const plotW = Math.max(1, cssWidth - padL - padR);
+  const plotH = Math.max(1, cssHeight - padT - padB);
+
+  //y axis auto scales to whatever's actually in the visible window, with a floor
+  //of 5% so a flat zero line isn't a razor thin sliver at the bottom
+  let maxVal = 5;
+  for (const d of visible) maxVal = Math.max(maxVal, d.smoke, d.fire);
+  maxVal = maxVal * 1.25;
+
+  const xForT = (t) => padL + ((t - windowStart) / CHART_WINDOW_MS) * plotW;
+  const yForVal = (v) => padT + plotH - (Math.min(v, maxVal) / maxVal) * plotH;
+
+  //gridlines, at 0/50/100% of the current max
+  chartCtx.strokeStyle = borderColor;
+  chartCtx.fillStyle = mutedColor;
+  chartCtx.font = "10px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  chartCtx.lineWidth = 1;
+  [0, 0.5, 1].forEach((frac) => {
+    const y = padT + plotH - frac * plotH;
+    chartCtx.beginPath();
+    chartCtx.moveTo(padL, y);
+    chartCtx.lineTo(padL + plotW, y);
+    chartCtx.stroke();
+    chartCtx.fillText(`${(maxVal * frac).toFixed(0)}%`, padL + plotW + 6, y + 3);
+  });
+  chartCtx.fillText("-60s", padL, cssHeight - 3);
+  chartCtx.fillText("now", padL + plotW - 18, cssHeight - 3);
+
+  //draws one series' line plus an endpoint dot, returns the endpoint so end labels
+  //can be placed and nudged apart if the two series overlap
+  //input: (key - "smoke" or "fire") (color - stroke/fill color for this series)
+  //returns: { ey, value } for the last point, or nothing if there's no data yet
+  function drawSeries(key, color) {
+    if (visible.length === 0) return;
+    chartCtx.strokeStyle = color;
+    chartCtx.lineWidth = 2;
+    chartCtx.lineJoin = "round";
+    chartCtx.lineCap = "round";
+    chartCtx.beginPath();
+    visible.forEach((d, i) => {
+      const x = xForT(d.t);
+      const y = yForVal(d[key]);
+      if (i === 0) chartCtx.moveTo(x, y);
+      else chartCtx.lineTo(x, y);
+    });
+    chartCtx.stroke();
+
+    const last = visible[visible.length - 1];
+    const ex = xForT(last.t);
+    const ey = yForVal(last[key]);
+    chartCtx.fillStyle = color;
+    chartCtx.beginPath();
+    chartCtx.arc(ex, ey, 3, 0, Math.PI * 2);
+    chartCtx.fill();
+    return { ey, value: last[key] };
+  }
+
+  const smokeEnd = drawSeries("smoke", smokeColor);
+  const fireEnd = drawSeries("fire", fireColor);
+
+  //direct end labels in neutral ink, color identity is already carried by the dot
+  //above, nudges the two labels apart if their values are close together
+  if (smokeEnd && fireEnd) {
+    let ySmoke = smokeEnd.ey, yFire = fireEnd.ey;
+    if (Math.abs(ySmoke - yFire) < 12) {
+      const mid = (ySmoke + yFire) / 2;
+      ySmoke = mid - 6;
+      yFire = mid + 6;
+    }
+    chartCtx.fillStyle = textColor;
+    chartCtx.fillText(`${smokeEnd.value.toFixed(1)}%`, padL + plotW + 6, ySmoke + 3);
+    chartCtx.fillText(`${fireEnd.value.toFixed(1)}%`, padL + plotW + 6, yFire + 3);
+  } else if (smokeEnd) {
+    chartCtx.fillStyle = textColor;
+    chartCtx.fillText(`${smokeEnd.value.toFixed(1)}%`, padL + plotW + 6, smokeEnd.ey + 3);
+  } else if (fireEnd) {
+    chartCtx.fillStyle = textColor;
+    chartCtx.fillText(`${fireEnd.value.toFixed(1)}%`, padL + plotW + 6, fireEnd.ey + 3);
+  }
+
+  //hover crosshair + tooltip, finds whichever sample is closest to the cursor's x
+  if (chartHoverX !== null && visible.length) {
+    let nearest = visible[0];
+    let nearestDist = Infinity;
+    for (const d of visible) {
+      const dist = Math.abs(xForT(d.t) - chartHoverX);
+      if (dist < nearestDist) { nearestDist = dist; nearest = d; }
+    }
+    const nx = xForT(nearest.t);
+    chartCtx.strokeStyle = mutedColor;
+    chartCtx.lineWidth = 1;
+    chartCtx.beginPath();
+    chartCtx.moveTo(nx, padT);
+    chartCtx.lineTo(nx, padT + plotH);
+    chartCtx.stroke();
+
+    const secondsAgo = Math.round((now - nearest.t) / 1000);
+    chartTooltip.innerHTML = `
+      <div>${secondsAgo <= 0 ? "now" : "-" + secondsAgo + "s"}</div>
+      <div class="flex items-center gap-1.5"><span class="w-[7px] h-[7px] rounded-sm ${SWATCH_CLASSES.smoke}"></span>smoke ${nearest.smoke.toFixed(1)}%</div>
+      <div class="flex items-center gap-1.5"><span class="w-[7px] h-[7px] rounded-sm ${SWATCH_CLASSES.fire}"></span>fire ${nearest.fire.toFixed(1)}%</div>
+    `;
+    const tooltipX = Math.min(Math.max(nx - 40, 0), cssWidth - 100);
+    chartTooltip.style.left = `${tooltipX}px`;
+    chartTooltip.classList.remove("opacity-0");
+    chartTooltip.classList.add("opacity-100");
+  } else {
+    chartTooltip.classList.remove("opacity-100");
+    chartTooltip.classList.add("opacity-0");
+  }
+}
+
+chartCanvas.addEventListener("mousemove", (e) => {
+  const rect = chartCanvas.getBoundingClientRect();
+  chartHoverX = e.clientX - rect.left;
+});
+chartCanvas.addEventListener("mouseleave", () => { chartHoverX = null; });
+
+//keeps the chart redrawing every frame regardless of whether new data has come in,
+//so the 60s window keeps scrolling smoothly on its own
+(function chartLoop() {
+  drawChart();
+  requestAnimationFrame(chartLoop);
+})();
+
+//main send loop, paced by rAF but only actually sends a frame once the previous
+//response has come back and enough time has passed, so it can never flood the
+//backend faster than it can keep up
+//input: none, reads running/ws/video globals
+//returns: nothing, schedules itself again via requestAnimationFrame
 function captureLoop() {
   if (!running) return;
   requestAnimationFrame(captureLoop);
@@ -331,6 +716,18 @@ function captureLoop() {
   }, "image/jpeg", 0.8);
 }
 
+//catches a video that fails to load, e.g. the bundled demo clip isn't present on a
+//deploy that left it out for licensing reasons, or a corrupted uploaded file
+video.addEventListener("error", () => {
+  if (!running) return;
+  console.warn("Video failed to load:", video.error);
+  setStatus("Video unavailable", "error");
+  stopSession();
+});
+
+//asks for webcam permission and starts a session on it
+//input: none
+//returns: nothing, sets video.srcObject as a side effect
 async function startWebcam() {
   try {
     mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -343,32 +740,56 @@ async function startWebcam() {
   }
 }
 
-function startVideoFile(file) {
+//points the video element at a url (either the bundled demo clip or an uploaded
+//file's object url) and starts a session on it, looped
+//input: (url - a video src, string)
+//returns: nothing
+function startVideoFromUrl(url) {
   video.srcObject = null;
-  video.src = URL.createObjectURL(file);
+  video.src = url;
   video.loop = true;
   video.play();
   beginSession();
 }
 
+//input: (file - a File from the hidden file input)
+//returns: nothing, wraps the file in an object url and starts a session on it
+function startVideoFile(file) {
+  startVideoFromUrl(URL.createObjectURL(file));
+}
+
+//shared setup for any source (webcam/demo/upload), resets per session state and
+//kicks off the websocket connection + send loop
+//input: none
+//returns: nothing
 function beginSession() {
   running = true;
-  startWebcamBtn.disabled = true;
-  videoFileInput.disabled = true;
+  webcamToggle.disabled = true;
+  demoVideoToggle.disabled = true;
+  demoToggle.disabled = true;
   stopBtn.disabled = false;
+  placeholderText.style.display = "none";
   lastDetections = [];
   fpsSmoothed = 0;
+  timelineData = [];
   connectWs();
   requestAnimationFrame(captureLoop);
 }
 
+//tears down whatever source is active (webcam track or video element), closes the
+//socket, and resets the status board back to no detection
+//input: none
+//returns: nothing
 function stopSession() {
   running = false;
-  startWebcamBtn.disabled = false;
-  videoFileInput.disabled = false;
+  webcamToggle.disabled = false;
+  demoVideoToggle.disabled = false;
+  demoToggle.disabled = false;
   stopBtn.disabled = true;
-  setStatus("Idle", "");
-  fpsBadge.textContent = "-- FPS";
+  setStatus("Idle", "idle");
+  throughputValue.textContent = "-- fps";
+  inferenceValue.textContent = "-- ms";
+  placeholderText.style.display = "block";
 
   if (mediaStream) {
     mediaStream.getTracks().forEach(t => t.stop());
@@ -383,9 +804,38 @@ function stopSession() {
     ws = null;
   }
   ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+  for (const cls of Object.keys(classState)) {
+    classState[cls] = { active: false, startTime: 0, peakConf: 0, lastSeen: 0 };
+    updateStatusRow(cls);
+  }
 }
 
-startWebcamBtn.addEventListener("click", startWebcam);
+const TOGGLE_INACTIVE = ["bg-[#fefdfb]", "dark:bg-[#161b22]", "text-[#1a1a18]", "dark:text-[#c9d1d9]"];
+const TOGGLE_ACTIVE = ["bg-[#1a1a18]", "text-[#fefdfb]"];
+
+//highlights whichever source button matches the active source, same fixed colors
+//in both themes (not theme dependent, matches how the original design looked)
+//input: (which - "webcam"/"demoVideo"/"upload")
+//returns: nothing
+function setActiveToggle(which) {
+  swapClasses(webcamToggle, TOGGLE_ACTIVE, TOGGLE_INACTIVE, which === "webcam");
+  swapClasses(demoVideoToggle, TOGGLE_ACTIVE, TOGGLE_INACTIVE, which === "demoVideo");
+  swapClasses(demoToggle, TOGGLE_ACTIVE, TOGGLE_INACTIVE, which === "upload");
+}
+
+webcamToggle.addEventListener("click", () => {
+  setActiveToggle("webcam");
+  startWebcam();
+});
+demoVideoToggle.addEventListener("click", () => {
+  setActiveToggle("demoVideo");
+  startVideoFromUrl("wildfire.mp4");
+});
+demoToggle.addEventListener("click", () => {
+  setActiveToggle("upload");
+  videoFileInput.click();
+});
 stopBtn.addEventListener("click", stopSession);
 videoFileInput.addEventListener("change", (e) => {
   const file = e.target.files[0];

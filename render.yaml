@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: wildfire-detect
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: MODEL_PATH
+        value: /app/model/best.pt

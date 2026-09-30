@@ -23,4 +23,6 @@ ENV MODEL_PATH=/app/model/best.pt
 
 EXPOSE 8000
 
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Render (and most PaaS hosts) inject a PORT env var the app must bind to;
+# ${PORT:-8000} falls back to 8000 for local `docker run` where it's unset.
+CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

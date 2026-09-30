@@ -1,8 +1,6 @@
-"""
-Phase 6.5 exploration: detect with YOLOv8, then box-prompt FastSAM within
-each detection to generate a pixel-level mask. Visualizes results and
-times the added latency, before deciding whether this is viable live.
-"""
+#detect with yolov8 then box prompt fastsam within each detection to generate a
+#pixel level mask. visualizes results and times the added latency, before deciding
+#whether this is viable to run live
 import time
 from pathlib import Path
 
@@ -12,7 +10,7 @@ from PIL import Image
 from ultralytics import FastSAM, YOLO
 
 ROOT = Path(__file__).resolve().parent.parent
-DET_WEIGHTS = ROOT / "runs/detect/runs/train/baseline-3/weights/best.pt"
+DET_WEIGHTS = ROOT / "model/best.pt"
 SEG_WEIGHTS = "FastSAM-s.pt"  # auto-downloaded by ultralytics on first use
 CLASS_NAMES = ["smoke", "fire"]
 COLORS = [(230, 198, 25), (248, 81, 73)]  # smoke=yellow, fire=red (RGB)
@@ -20,9 +18,11 @@ OUT_DIR = ROOT / "scripts" / "exploration_output"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
+#grabs test images that have at least one smoke ground truth box, since smoke is the
+#harder case for mask quality (diffuse, low contrast) and the one worth eyeballing
+#input: (n - how many image paths to return)
+#returns: list of image paths
 def pick_sample_images(n=6):
-    """Grab test images that have at least one smoke detection ground truth,
-    since smoke is the harder case for mask quality (diffuse, low-contrast)."""
     label_dir = ROOT / "data" / "test" / "labels"
     img_dir = ROOT / "data" / "test" / "images"
     picks = []
@@ -37,12 +37,19 @@ def pick_sample_images(n=6):
     return picks
 
 
+#runs yolov8 detection on one image, then feeds its boxes into fastsam as box
+#prompts to get a mask per detection, timing just the segmentation step
+#input: (det_model, seg_model - the loaded YOLO and FastSAM models) (img_path - image
+#to run on) (conf - detection confidence threshold)
+#returns: (boxes, classes, confs, masks, seg_ms), the detection boxes/classes/
+#confidences, the fastsam masks (empty list if no boxes), and segmentation time in ms
 def run_pipeline(det_model, seg_model, img_path, conf=0.25):
     result = det_model.predict(str(img_path), conf=conf, verbose=False)[0]
     boxes = [box.xyxy[0].tolist() for box in result.boxes]
     classes = [int(box.cls.item()) for box in result.boxes]
     confs = [float(box.conf.item()) for box in result.boxes]
 
+    #nothing detected, skip fastsam entirely, nothing to box-prompt with
     if not boxes:
         return boxes, classes, confs, [], 0.0
 
@@ -54,6 +61,11 @@ def run_pipeline(det_model, seg_model, img_path, conf=0.25):
     return boxes, classes, confs, masks, seg_ms
 
 
+#blends each mask's class color over the image at 50% opacity, resizing the mask up
+#to the image's full resolution first
+#input: (img_array - the base rgb image, as a numpy array) (masks - list of fastsam
+#masks) (classes - class id per mask, same order)
+#returns: a new rgb numpy array with the masks overlaid
 def overlay_masks(img_array, masks, classes):
     overlay = img_array.copy()
     for mask, cls in zip(masks, classes):
@@ -65,6 +77,10 @@ def overlay_masks(img_array, masks, classes):
     return overlay
 
 
+#entry point, loads both models, runs the detect then segment pipeline on a handful
+#of smoke labeled test images, and saves a grid comparing boxes+masks with timing
+#input: none
+#returns: nothing, saves a png to OUT_DIR and prints average segmentation time
 def main():
     print("Loading detection model...")
     det_model = YOLO(str(DET_WEIGHTS))

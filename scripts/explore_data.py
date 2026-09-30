@@ -1,7 +1,5 @@
-"""
-Phase 1 exploration: class balance, image size distribution, sample visualization
-for the D-Fire dataset (YOLO format: data/{train,val,test}/{images,labels}).
-"""
+#dataset exploration, class balance, image size distribution, sample visualization
+#for the d-fire dataset (yolo format: data/{train,val,test}/{images,labels})
 import random
 from collections import Counter
 from pathlib import Path
@@ -17,6 +15,9 @@ OUT_DIR = ROOT / "scripts" / "exploration_output"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
+#reads one yolo label file into a list of boxes, empty files mean background only
+#input: (label_path - path to a single .txt label file)
+#returns: list of (class_id, x_center, y_center, width, height) tuples, all normalized 0-1
 def parse_labels(label_path: Path):
     if not label_path.stat().st_size:
         return []
@@ -27,6 +28,9 @@ def parse_labels(label_path: Path):
     return boxes
 
 
+#prints per split box counts and background-only image counts, per class
+#input: none, reads DATA/SPLITS/CLASS_NAMES globals
+#returns: nothing, prints only
 def class_balance():
     print("\n=== Class balance (per box, and per image) ===")
     for split in SPLITS:
@@ -42,6 +46,8 @@ def class_balance():
             if not boxes:
                 n_background += 1
                 continue
+            #tracks which classes show up in this image, so a class with multiple
+            #boxes in one image still only counts once for "images containing X"
             classes_in_image = set()
             for cls, *_ in boxes:
                 box_counts[cls] += 1
@@ -60,6 +66,10 @@ def class_balance():
             )
 
 
+#samples images per split and prints width/height stats, to sanity check what
+#imgsz/resize choice makes sense for training
+#input: (sample_size - max images to sample per split)
+#returns: nothing, prints only
 def image_size_distribution(sample_size=1000):
     print("\n=== Image size distribution (sampled) ===")
     for split in SPLITS:
@@ -83,6 +93,10 @@ def image_size_distribution(sample_size=1000):
         print(f"  most common: {unique_sizes.most_common(3)}")
 
 
+#grabs a handful of labeled training images and saves a grid with boxes drawn on
+#top, for a quick eyeball check that labels line up with what's actually in frame
+#input: (n - how many sample images to draw, plotted as a roughly square grid)
+#returns: nothing, saves a png to OUT_DIR as a side effect
 def visualize_samples(n=9):
     print(f"\n=== Saving {n} annotated sample images to {OUT_DIR} ===")
     img_dir = DATA / "train" / "images"
@@ -100,6 +114,8 @@ def visualize_samples(n=9):
             w, h = im.size
             ax.imshow(im)
 
+        #yolo boxes are normalized center x/y + width/height, convert to pixel
+        #top left corner + pixel width/height for matplotlib's Rectangle
         for cls, xc, yc, bw, bh in parse_labels(lf):
             box_w, box_h = bw * w, bh * h
             x0 = xc * w - box_w / 2
@@ -121,7 +137,7 @@ def visualize_samples(n=9):
 
 
 if __name__ == "__main__":
-    random.seed(0)
+    random.seed(0)   #for reproducible sampling
     class_balance()
     image_size_distribution()
     visualize_samples()
